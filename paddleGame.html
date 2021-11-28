@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <meta charset="utf-8"/>
+        <title>paddle game</title>
+        <style type="text/css">
+            *{
+                padding:0;margin:0;
+            }
+            canvas{
+                background:#eee;display:block;margin:0 auto;
+            }
+            .img1{
+                position: absolute;
+                top: 300px;
+                left: 400px;
+                width: 100px;
+            }
+            .img2{
+                position: absolute;
+                top: 300px;
+                right: 250px;
+                width: 250px;
+            }
+            body{
+                background-color: #FFB5B5;
+            }
+        </style>
+    </head>
+    <body>
+        <img src="img/word.png" width="600px">
+        <canvas id="myCanvas" width="480px" height="390px"></canvas>
+        <img class="img1" src="img/lisa2.png" >
+        <img class="img2" src="img/bplay.png" >
+    <script>
+        var canvas=document.getElementById("myCanvas");
+        var ctx=canvas.getContext("2d");
+
+        //小圓點半徑設10
+        var ballRadius=10;
+
+//定義一個起始點,在畫布底部中央
+        var x=canvas.width/2;
+        var y=canvas.height-30;
+
+//(讓小圓點從起始點)移動,每移動一次,x軸往右移2格,y軸向上移動2格
+        var dx=2;
+        var dy=-2;
+
+//設定滑鼠控制的平板寬、高
+        var paddleHeight=10;
+        var paddleWidth=75;
+        var paddleX=(canvas.width-paddleWidth)/2;
+
+//預設一開始都沒有按按鍵或移動滑鼠
+        var rightPressed=false;
+        var leftPressed=false;
+
+//跟磚塊有關的所有設定
+        var brickRowCount=5;
+        var brickColumnCount=3;
+        var brickWidth=75;
+        var brickHeight=20;
+        var brickPadding=10;
+        var brickOffsetTop=30;
+        var brickOffsetLeft=30;
+
+//原始分數為零,生命數為三
+        var score=0;
+        var lives=3;
+
+//磚塊初始狀態都設為1
+        var bricks=[];
+        for(var c=0;c<brickColumnCount;c++){
+            bricks[c]=[];
+            for(var r=0;r<brickRowCount;r++){
+                bricks[c][r]={x:0,y:0,status:1};
+            }
+        }
+        
+//按鍵預設值皆為false
+        document.addEventListener("keydown",keyDownHandler,false);
+        document.addEventListener("keyup",keyUpHandler,false);
+//滑鼠預設值皆為false
+        document.addEventListener("mousemove",mouseMoveHandler,false);
+
+        //e代表event 如果後面還需要獲取操作訊息,就要加e
+//表示按下按鍵
+        function keyDownHandler(e){
+            if(e.keyCode==39){
+                rightPressed=true;
+            }
+            else if(e.keyCode==37){
+                leftPressed=true;
+            }
+        }
+//表示表示放開按鍵
+        function keyUpHandler(e){
+            if(e.keyCode==39){
+                rightPressed=false;
+            }
+            else if(e.keyCode==37){
+                leftPressed=false;
+            }
+        }
+
+//如果滑鼠在畫布範圍內,滑鼠位置減一半平板長度,即為平板的起始點
+        function mouseMoveHandler(e){
+            var relativeX=e.clientX-canvas.offsetLeft;
+            if(relativeX>0&&relativeX<canvas.width){
+                paddleX=relativeX-paddleWidth/2;
+            }
+        }
+
+//若碰到某一個小磚塊就反彈
+        function collisionDetection(){
+            for(var c=0;c<brickColumnCount;c++){
+            for(var r=0;r<brickRowCount;r++){
+                var b=bricks[c][r];
+        //若狀態為1且小圓點碰到某一個磚塊
+                if(b.status==1){ if(x>b.x&&x<b.x+brickWidth&&y>b.y&&y<b.y+brickHeight){
+                   dy=-dy;
+                    b.status=0;   //碰到的磚塊狀態改為0
+                    score++;
+            //如果所有磚塊都消掉,則彈出獲勝視窗
+                    if(score==brickRowCount*brickColumnCount){
+                       alert("YOU WiN,CONGRATULATIONS!");
+                        document.location.reload();
+                        clearInterval(interval);  //清掉interval(反覆執行drew函式)瀏覽器才能結束遊戲
+                       }
+                   }
+                   }
+            }
+        }
+        }
+
+        function drawScore(){
+            ctx.font="16px Arial";
+            ctx.fillStyle = "#0095DD";
+            ctx.fillText("Score:"+score,8,20); //8是x座標的起始位置,20是y座標的起始位置
+        }
+
+        function drawLives(){
+            ctx.font = "16px Arial";
+            ctx.fillStyle = "#0095DD";
+            ctx.fillText("Lives:"+lives,canvas.width-65,20);
+        }
+
+        //寫一個畫小圓點的函式
+        function drawBall(){
+            ctx.beginPath();
+            //arc(圓心x座標,圓心y座標,半徑,起點,終點,順/逆時鐘) 順時鐘為false 逆時鐘為true
+            ctx.arc(x,y,ballRadius,0,Math.PI*2); 
+            ctx.fillStyle = "#0095DD";
+            ctx.fill();
+            ctx.closePath();
+        }
+
+       //在畫布中間底部,畫一個平板(將由滑鼠控制)
+        function drawPaddle(){
+            ctx.beginPath();
+            // ctx.rect(x軸起始位置,y軸起始位置 ,平板長 ,平板高度);
+            ctx.rect(paddleX,canvas.height-paddleHeight,paddleWidth,paddleHeight);
+            ctx.fillStyle = "#0095DD";
+            ctx.fill();
+            ctx.closePath();
+        }
+
+        //使用二維陣列來表示磚塊
+        //r表示列,c表示行,用矩形+遞迴,畫出整片磚塊(小磚塊間的空格也算進去)
+        function drawBricks(){
+            for(var c=0;c<brickColumnCount;c++){
+            for(var r=0;r<brickRowCount;r++){
+//若狀態為1才畫出磚塊
+                if(bricks[c][r].status==1){
+                    var brickX=(r*(brickWidth+brickPadding))+brickOffsetLeft;
+                var brickY=(c*(brickHeight+brickPadding))+brickOffsetTop;
+                bricks[c][r].x=brickX;
+                bricks[c][r].y=brickY;
+                ctx.beginPath();
+                ctx.rect(brickX,brickY,brickWidth,brickHeight);
+                ctx.fillStyle = "#0095DD";
+                ctx.fill();
+                ctx.closePath();
+                }
+            }
+        }
+        }
+       
+        function draw(){
+            //已給的矩形範圍進行畫面清除, ctx.clearRect(x軸座標,y軸座標,矩形長,矩形寬)
+            ctx.clearRect(0,0,canvas.width,canvas.height);
+            drawBricks();
+            //畫出小圓點,並移動
+            drawBall();
+            drawPaddle();
+            drawScore();
+            drawLives();
+            collisionDetection();
+
+            //用兩個條件(or) 是因為左右兩邊 
+           //加上半徑才不會小圓點一半卡進牆,因為是以小圓點圓心為基礎
+            if(x+dx<ballRadius||x+dx>canvas.width-ballRadius){
+                dx=-dx;
+            }
+
+            //小圓點碰到上方牆壁反彈
+            if(y+dy<ballRadius){
+                dy=-dy;
+            }
+//小圓點碰到下方牆壁時,若小圓點碰到平板(介在平板起始點及平板終點之間)
+//則小圓點反彈
+            else if(y+dy>canvas.height-ballRadius){
+                if(x>paddleX&&x<paddleX+paddleWidth){
+                    dy=-dy;
+                }else{
+                    lives--;
+                    if(!lives){
+//彈出game over視窗
+                        alert("Game Over");
+//重新載入
+                        document.location.reload();
+                    }else{
+//若還有生命值,則把小圓球和平板的數值調回原本的值,重新開始
+                        x = canvas.width/2;
+                        y = canvas.height-30;
+                        dx = 2;
+                        dy = -2;
+                        paddleX = (canvas.width-paddleWidth)/2;
+                    }
+                }
+            }
+           //如果按右鍵,平板往右移7pixels
+//為避免平板超出畫布
+            if(rightPressed&& canvas.width-paddleWidth>paddleX){
+                paddleX+=7;
+
+            }
+//如果按左鍵,平板往左移7pixels
+            else if(leftPressed&&paddleX>0){
+                paddleX-=7;
+            }
+            x+=dx;
+            y+=dy;
+            requestAnimationFrame(draw);
+        }
+        draw();
+    </script>
+        </body>
+</html>
